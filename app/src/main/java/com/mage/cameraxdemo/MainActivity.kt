@@ -1,9 +1,13 @@
 package com.mage.cameraxdemo
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
@@ -11,16 +15,45 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var imageCapture: ImageCapture
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        ActivityCompat.requestPermissions(this, arrayOf<String>(Manifest.permission.CAMERA), 100)//请求权限
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf<String>(
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ),
+            100
+        )//请求权限
         cameraProviderFuture = ProcessCameraProvider.getInstance(this)//获得provider实例
-
+        tv_takepic.setOnClickListener {
+            val path = filesDir.absolutePath + File.separator + System.currentTimeMillis() + ".jpg"//使用内部存储存储最终图片
+            var photoFile= File(path)
+            val outputFileOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()//构建输出选项
+            var cameraExecutor = Executors.newSingleThreadExecutor()
+            //点击拍照
+            imageCapture.takePicture(outputFileOptions, cameraExecutor,
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onError(error: ImageCaptureException) {
+                    }
+                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        val savedUri = outputFileResults.savedUri ?: Uri.fromFile(photoFile)//获取uri
+                        println("拍照成功")
+                        startActivity(Intent(this@MainActivity,ImageShowActivity::class.java).apply {//跳转到新页面展示图片
+                            putExtra("path",savedUri)
+                        })
+                    }
+                })
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -47,8 +80,15 @@ class MainActivity : AppCompatActivity() {
             .requireLensFacing(CameraSelector.LENS_FACING_BACK)
             .build()
 
-        preview.setSurfaceProvider(previewView.getSurfaceProvider())
-
-        var camera = cameraProvider.bindToLifecycle(this as LifecycleOwner, cameraSelector, preview)
+        preview.setSurfaceProvider(previewView.surfaceProvider)
+        imageCapture = ImageCapture.Builder()
+            .setTargetRotation(previewView.display.rotation)
+            .build()
+        var camera = cameraProvider.bindToLifecycle(
+            this as LifecycleOwner,
+            cameraSelector,
+            imageCapture,//这个参数必须加上才能进行拍照
+            preview
+        )
     }
 }
