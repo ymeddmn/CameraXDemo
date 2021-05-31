@@ -1,6 +1,7 @@
 package com.mage.cameraxdemo
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
@@ -14,22 +15,32 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.example.android.camera.utils.YuvToRgbConverter
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.*
+import java.lang.Runnable
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import kotlin.concurrent.thread
+import kotlin.coroutines.CoroutineContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
-
+    var scope = MainScope()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        ActivityCompat.requestPermissions(this, arrayOf<String>(Manifest.permission.CAMERA), 100)//请求权限
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf<String>(Manifest.permission.CAMERA),
+            100
+        )//请求权限
         cameraProviderFuture = ProcessCameraProvider.getInstance(this)//获得provider实例
 
     }
 
+    @SuppressLint("UnsafeOptInUsageError")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -44,22 +55,34 @@ class MainActivity : AppCompatActivity() {
             .build()
         var executor = Executors.newFixedThreadPool(5)
         imageAnalysis.setAnalyzer(executor, ImageAnalysis.Analyzer { image ->
-            val rotationDegrees = image.imageInfo.rotationDegrees
-            iv.setImageBitmap(imageProxyToBitmap(image))
-            image.close()
+            val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+            thread {
+                YuvToRgbConverter(this@MainActivity).yuvToRgb(
+                    image = image.image!!,
+                    bitmap
+                )//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
+                image.close()//这里调用了close就会继续生成下一帧图片
+                runOnUiThread {
+                    iv.setImageBitmap(bitmap)//回到主线程更新ui
+                }
+            }
+//            scope.launch(Dispatchers.IO) {
+//                val bitmap = Bitmap.createBitmap(image.width,image.height,Bitmap.Config.ARGB_8888)
+//                YuvToRgbConverter(this@MainActivity).yuvToRgb(image = image.image!!,bitmap)//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
+//                image.close()//这里调用了close就会继续生成下一帧图片
+//                withContext(Dispatchers.Main){//这里更新ui会崩溃，搞不懂为啥，很郁闷
+//                    iv.setImageBitmap(bitmap)//回到主线程更新ui
+//                }
+//            }
+
         })
         cameraProviderFuture.addListener(Runnable {
             val cameraProvider = cameraProviderFuture.get()
-            bindPreview(cameraProvider,imageAnalysis)
+            bindPreview(cameraProvider, imageAnalysis)
         }, ContextCompat.getMainExecutor(this))
 
     }
-    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
-        val buffer: ByteBuffer = image.planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }
+
     /**
      * 绑定预览view
      */
@@ -73,6 +96,16 @@ class MainActivity : AppCompatActivity() {
 
         preview.setSurfaceProvider(previewView.getSurfaceProvider())
 
-        var camera = cameraProvider.bindToLifecycle(this as LifecycleOwner, cameraSelector,imageAnalysis, preview)
+        var camera = cameraProvider.bindToLifecycle(
+            this as LifecycleOwner,
+            cameraSelector,
+            imageAnalysis,
+            preview
+        )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
     }
 }

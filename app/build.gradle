@@ -54,4 +54,6 @@ dependencies {
     implementation "androidx.camera:camera-view:1.0.0-alpha24"
     // If you want to additionally use the CameraX Extensions library
     implementation "androidx.camera:camera-extensions:1.0.0-alpha24"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.1.1"
 }
