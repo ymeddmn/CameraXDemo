@@ -56,24 +56,24 @@ class MainActivity : AppCompatActivity() {
         var executor = Executors.newFixedThreadPool(5)
         imageAnalysis.setAnalyzer(executor, ImageAnalysis.Analyzer { image ->
             val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-            thread {
-                YuvToRgbConverter(this@MainActivity).yuvToRgb(
-                    image = image.image!!,
-                    bitmap
-                )//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
-                image.close()//这里调用了close就会继续生成下一帧图片
-                runOnUiThread {
-                    iv.setImageBitmap(bitmap)//回到主线程更新ui
-                }
-            }
-//            scope.launch(Dispatchers.IO) {
-//                val bitmap = Bitmap.createBitmap(image.width,image.height,Bitmap.Config.ARGB_8888)
-//                YuvToRgbConverter(this@MainActivity).yuvToRgb(image = image.image!!,bitmap)//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
+//            thread {
+//                YuvToRgbConverter(this@MainActivity).yuvToRgb(
+//                    image = image.image!!,
+//                    bitmap
+//                )//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
 //                image.close()//这里调用了close就会继续生成下一帧图片
-//                withContext(Dispatchers.Main){//这里更新ui会崩溃，搞不懂为啥，很郁闷
+//                runOnUiThread {
 //                    iv.setImageBitmap(bitmap)//回到主线程更新ui
 //                }
 //            }
+            scope.launch(Dispatchers.IO) {
+                val bitmap = Bitmap.createBitmap(image.width,image.height,Bitmap.Config.ARGB_8888)
+                YuvToRgbConverter(this@MainActivity).yuvToRgb(image = image.image!!,bitmap)//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
+                image.close()//这里调用了close就会继续生成下一帧图片
+                withContext(Dispatchers.Main){//这里更新ui会崩溃，搞不懂为啥，很郁闷
+                    iv.setImageBitmap(bitmap)//回到主线程更新ui
+                }
+            }
 
         })
         cameraProviderFuture.addListener(Runnable {
