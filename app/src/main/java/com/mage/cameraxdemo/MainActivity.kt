@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         var preview: Preview = Preview.Builder()
             .build()
         var cameraSelector: CameraSelector = CameraSelector.Builder()
-            .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+            .requireLensFacing(CameraSelector.LENS_FACING_FRONT)//前置摄像头：LENS_FACING_FRONT  后置摄像头：LENS_FACING_BACK
             .build()
         preview.setSurfaceProvider(previewView.surfaceProvider)
 //        preview.setSurfaceProvider(mSurfaceProvider)
