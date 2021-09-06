@@ -1,14 +1,18 @@
 package com.mage.cameraxdemo
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
+import androidx.annotation.AnyThread
+import androidx.camera.core.*
+import androidx.camera.core.Preview.SurfaceProvider
+import androidx.camera.core.SurfaceRequest.TransformationInfo
+import androidx.camera.core.SurfaceRequest.TransformationInfoListener
+import androidx.camera.core.impl.CameraInternal
+import androidx.camera.core.impl.utils.Threads
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -36,8 +40,13 @@ class MainActivity : AppCompatActivity() {
         )//请求权限
         cameraProviderFuture = ProcessCameraProvider.getInstance(this)//获得provider实例
         tv_takepic.setOnClickListener {
-            val path = filesDir.absolutePath + File.separator + System.currentTimeMillis() + ".jpg"//使用内部存储存储最终图片
-            var photoFile= File(path)
+//            val path = filesDir.absolutePath + File.separator + System.currentTimeMillis() + ".jpg"//使用内部存储存储最终图片
+//            val path =
+            var file= File(getExternalFilesDir(""),"faeFile")
+            if(!file.exists()){
+                file.mkdirs()
+            }
+            val photoFile = File(file, "${System.currentTimeMillis() }.jpg")
             val outputFileOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()//构建输出选项
             var cameraExecutor = Executors.newSingleThreadExecutor()
             //点击拍照
@@ -75,12 +84,11 @@ class MainActivity : AppCompatActivity() {
     fun bindPreview(cameraProvider: ProcessCameraProvider) {
         var preview: Preview = Preview.Builder()
             .build()
-
         var cameraSelector: CameraSelector = CameraSelector.Builder()
             .requireLensFacing(CameraSelector.LENS_FACING_BACK)
             .build()
-
         preview.setSurfaceProvider(previewView.surfaceProvider)
+//        preview.setSurfaceProvider(mSurfaceProvider)
         imageCapture = ImageCapture.Builder()
             .setTargetRotation(previewView.display.rotation)
             .build()
@@ -91,4 +99,6 @@ class MainActivity : AppCompatActivity() {
             preview
         )
     }
+
+
 }
