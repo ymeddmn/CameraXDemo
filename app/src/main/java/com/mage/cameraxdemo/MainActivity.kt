@@ -50,22 +50,11 @@ class MainActivity : AppCompatActivity() {
         //默认你会同意权限，不同意就是自己的事了
 
         val imageAnalysis = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720))
+            .setTargetResolution(Size(600, 600))
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
         var executor = Executors.newFixedThreadPool(5)
         imageAnalysis.setAnalyzer(executor, ImageAnalysis.Analyzer { image ->
-            val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-//            thread {
-//                YuvToRgbConverter(this@MainActivity).yuvToRgb(
-//                    image = image.image!!,
-//                    bitmap
-//                )//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
-//                image.close()//这里调用了close就会继续生成下一帧图片
-//                runOnUiThread {
-//                    iv.setImageBitmap(bitmap)//回到主线程更新ui
-//                }
-//            }
             scope.launch(Dispatchers.IO) {
                 val bitmap = Bitmap.createBitmap(image.width,image.height,Bitmap.Config.ARGB_8888)
                 YuvToRgbConverter(this@MainActivity).yuvToRgb(image = image.image!!,bitmap)//将image转化为bitmap，参考：https://github.com/android/camera-samples/blob/3730442b49189f76a1083a98f3acf3f5f09222a3/CameraUtils/lib/src/main/java/com/example/android/camera/utils/YuvToRgbConverter.kt
